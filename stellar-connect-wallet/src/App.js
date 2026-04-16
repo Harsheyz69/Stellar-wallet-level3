@@ -97,6 +97,11 @@ function App() {
 
   useEffect(() => {
     (async () => {
+      // Don't auto-connect if user manually logged out in a previous session
+      if (localStorage.getItem("stellar_manual_logout") === "true") {
+        return;
+      }
+
       const result = await tryAutoConnect();
       if (result) {
         setPublicKey(result.address);
@@ -158,6 +163,8 @@ function App() {
       const bal = await fetchBalance(result.address);
       setBalance(bal);
       setDataLoading(false);
+      // Clear manual logout flag on successful connection
+      localStorage.removeItem("stellar_manual_logout");
     } catch (error) {
       setTxError({
         type: error.type || ERROR_TYPES.WALLET_NOT_FOUND,
@@ -176,7 +183,10 @@ function App() {
     setTxHash("");
     setTxError(null);
     setContractPayments([]);
+    setContractPayments([]);
     setTxHistory([]);
+    // Set manual logout flag to prevent auto-connect on next refresh
+    localStorage.setItem("stellar_manual_logout", "true");
   };
 
   // ── Recipients ────────────────────────────────────────────────────────────

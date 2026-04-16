@@ -1,6 +1,32 @@
 # StellarPay - Payment Tracker Decentralized Application
 
+![Stellar](https://img.shields.io/badge/Network-Stellar%20Testnet-blue)
+![Soroban](https://img.shields.io/badge/Engine-Soroban-green)
+![React](https://img.shields.io/badge/Frontend-React%2019-black)
+
 StellarPay is a professional-grade decentralized application (dApp) developed for the Stellar network. It provides a seamless interface for connecting wallets, executing XLM payments, and recording transaction metadata on a Soroban smart contract. This application is designed specifically for the Stellar Testnet.
+
+---
+
+## Live Proof (Testnet)
+- **Contract ID**: `[Configure in constants.js]` (uses local memory fallback if not provided)
+- **Network Passphrase**: `Test SDF Network ; September 2015`
+- **RPC URL**: `https://soroban-testnet.stellar.org`
+- **Horizon URL**: `https://horizon-testnet.stellar.org`
+
+---
+
+## Screenshots
+| Wallet Options |
+| :---: |
+| ![Wallet Options Screenshot](public/wallet-options.png) |
+
+---
+
+## Multi-Wallet Support
+Powered by direct integrations and Stellar standards, StellarPay supports:
+- **Freighter** (Recommended)
+- **xBull**
 
 ---
 
@@ -24,7 +50,7 @@ StellarPay is a professional-grade decentralized application (dApp) developed fo
 
 This application follows a modular architecture to separate concerns and ensure maintainability.
 
-```
+```text
 +-------------------------------------------------------------+
 |                        User Interface                       |
 |  +------------------+  +------------------+  +-----------+  |
@@ -54,7 +80,7 @@ This application follows a modular architecture to separate concerns and ensure 
 
 ## Project Structure
 
-```
+```text
 stellar-connect-wallet/
 ├── public/
 │   └── wallet-options.png      # Screenshot documentation of wallet selection
@@ -85,8 +111,8 @@ stellar-connect-wallet/
 
 * Node.js version 18.0.0 or higher
 * A supported browser extension:
-    * Freighter
-    * xBull
+    * [Freighter](https://www.freighter.app/)
+    * [xBull](https://xbull.app/)
 
 ### Installation
 
@@ -110,21 +136,47 @@ The application will be accessible at http://localhost:3000.
 
 ---
 
-## Testing Framework
+## Testing Framework & Verified Results
 
 The repository includes a comprehensive test suite consisting of 8 automated tests designed to verify component rendering, state transitions, and utility correctness.
 
-### Test Execution
-
-Run the complete test suite:
+To run the complete React test suite:
 ```bash
 npm test -- --watchAll=false
 ```
 
-### Components Tested
-* **Application Interface**: Verifies landing page rendering, theme persistence, and modal transitions.
-* **Cache Utility**: Ensures correct Time-To-Live logic, storage persistence, and manual invalidation.
-* **Client Logic**: Validates Stellar address formats across various edge cases.
+### Verified Test Results
+
+```text
+PASS  src/cache.test.js
+  Cache Layer
+    ✓ stores and retrieves values within TTL
+    ✓ returns null for expired entries
+    ✓ invalidate removes specific keys
+    ✓ exports cache keys and TTL constants
+
+PASS  src/contractClient.test.js
+  contractClient utilities
+    ✓ isValidStellarAddress correctly validates addresses
+
+PASS  src/App.test.js
+  App
+    ✓ renders welcome screen with hero content when not connected
+    ✓ toggles theme between light and dark mode
+    ✓ opens wallet connection modal on button click
+
+Test Suites: 3 passed, 3 total
+Tests:       8 passed, 8 total
+```
+
+### Running Smart Contract Tests
+
+To verify the Soroban logic, navigate to the contract directory and run Rust unit tests:
+
+```bash
+cd contracts/payment-tracker
+cargo test
+```
 
 ---
 
@@ -153,7 +205,7 @@ Professional loading states are implemented using three specific strategies:
 
 ## Smart Contract Details
 
-The application can interact with a Soroban-based smart contract (`contracts/payment-tracker/src/lib.rs`) that provides the following functionality:
+The application interacts with a Soroban-based smart contract (`contracts/payment-tracker/src/lib.rs`) that provides the following functionality:
 * `record_payment`: Stores sender, recipient, amount, and memo on-chain.
 * `get_payment_count`: Retrieves the total volume of payments recorded.
 * `get_payments_by_sender`: Indexes all payment IDs associated with a specific address.
@@ -164,10 +216,10 @@ If no specific Contract ID is provided in `constants.js`, the application defaul
 
 ## Technology Stack
 
-* **React**: Core UI library
+* **React 19**: Core UI library
 * **Stellar SDK**: Blockchain interaction
-* **Soroban**: Smart contract execution
-* **Javascript (ES6+)**: Programming logic
+* **Soroban SDK**: Smart contract execution
+* **Javascript (ES6+) / Rust**: Programming logic
 * **Vanilla CSS**: Advanced styling and animations
 * **Jest**: Testing framework
 

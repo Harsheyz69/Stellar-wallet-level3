@@ -28,6 +28,45 @@ jest.mock('@stellar/freighter-api', () => ({
   signTransaction: jest.fn().mockResolvedValue({ signedTxXdr: '', error: 'mocked' }),
 }));
 
+// ─── Mock @creit.tech/stellar-wallets-kit ───────────────────────────────────
+
+jest.mock('@creit.tech/stellar-wallets-kit', () => {
+  const kitMock = {
+    init: jest.fn(),
+    refreshSupportedWallets: jest.fn().mockResolvedValue([{ id: 'FREIGHTER', name: 'Freighter', isAvailable: true }]),
+    setWallet: jest.fn(),
+    fetchAddress: jest.fn().mockResolvedValue({ address: 'G_MOCK_KIT_ADDR' }),
+    signTransaction: jest.fn().mockResolvedValue({ signedTxXdr: 'mock_xdr_from_kit' }),
+    disconnect: jest.fn().mockResolvedValue()
+  };
+  return {
+    __esModule: true,
+    StellarWalletsKit: kitMock,
+    Networks: { TESTNET: 'TESTNET', PUBLIC: 'PUBLIC' },
+    default: kitMock
+  };
+}, { virtual: true });
+
+jest.mock('@creit.tech/stellar-wallets-kit/modules/freighter', () => ({
+  FreighterModule: jest.fn(),
+  FREIGHTER_ID: 'FREIGHTER'
+}), { virtual: true });
+
+jest.mock('@creit.tech/stellar-wallets-kit/modules/xbull', () => ({
+  xBullModule: jest.fn(),
+  XBULL_ID: 'XBULL'
+}), { virtual: true });
+
+jest.mock('@creit.tech/stellar-wallets-kit/modules/albedo', () => ({
+  AlbedoModule: jest.fn(),
+  ALBEDO_ID: 'ALBEDO'
+}), { virtual: true });
+
+jest.mock('@creit.tech/stellar-wallets-kit/modules/lobstr', () => ({
+  LobstrModule: jest.fn(),
+  LOBSTR_ID: 'LOBSTR'
+}), { virtual: true });
+
 // ─── Mock lucide-react (return simple span elements) ────────────────────────
 
 jest.mock('lucide-react', () => {

@@ -146,9 +146,15 @@ function App() {
   // ── Wallet Actions ────────────────────────────────────────────────────────
 
   const handleOpenWalletModal = async () => {
-    const wallets = await detectWallets();
-    setAvailableWallets(wallets);
-    setShowWalletModal(true);
+    console.log("handleOpenWalletModal fired!");
+    try {
+      const wallets = await detectWallets();
+      console.log("wallets returned:", wallets);
+      setAvailableWallets(wallets);
+      setShowWalletModal(true);
+    } catch(e) {
+      console.error("handleOpenWalletModal ERROR", e);
+    }
   };
 
   const handleConnectWallet = async (type) => {
@@ -640,19 +646,18 @@ function App() {
                     {/* Transaction progress bar */}
                     <div className="tx-progress-bar">
                       <div
-                        className={`tx-progress-fill ${
-                          txStatus === TX_STATUS.SUCCESS || txStatus === TX_STATUS.FAILED
+                        className={`tx-progress-fill ${txStatus === TX_STATUS.SUCCESS || txStatus === TX_STATUS.FAILED
                             ? ""
                             : "indeterminate"
-                        }`}
+                          }`}
                         style={{
                           width:
                             txStatus === TX_STATUS.BUILDING ? "15%" :
-                            txStatus === TX_STATUS.SIGNING ? "35%" :
-                            txStatus === TX_STATUS.SUBMITTING ? "60%" :
-                            txStatus === TX_STATUS.CONFIRMING ? "80%" :
-                            txStatus === TX_STATUS.SUCCESS ? "100%" :
-                            txStatus === TX_STATUS.FAILED ? "100%" : "0%",
+                              txStatus === TX_STATUS.SIGNING ? "35%" :
+                                txStatus === TX_STATUS.SUBMITTING ? "60%" :
+                                  txStatus === TX_STATUS.CONFIRMING ? "80%" :
+                                    txStatus === TX_STATUS.SUCCESS ? "100%" :
+                                      txStatus === TX_STATUS.FAILED ? "100%" : "0%",
                           background: txStatus === TX_STATUS.FAILED ? "var(--error)" : undefined,
                         }}
                       />

@@ -1,12 +1,11 @@
 // ─── Network & Contract Constants ───────────────────────────────────────────
-// Replace CONTRACT_ID with your deployed contract address after deployment.
 
-export const NETWORK_PASSPHRASE = "Test SDF Network ; September 2015";
-export const HORIZON_URL = "https://horizon-testnet.stellar.org";
-export const SOROBAN_RPC_URL = "https://soroban-testnet.stellar.org";
+export const NETWORK_PASSPHRASE = process.env.REACT_APP_NETWORK_PASSPHRASE || "Test SDF Network ; September 2015";
+export const HORIZON_URL = process.env.REACT_APP_HORIZON_URL || "https://horizon-testnet.stellar.org";
+export const SOROBAN_RPC_URL = process.env.REACT_APP_SOROBAN_RPC_URL || "https://soroban-testnet.stellar.org";
 
-// ⚠️ Replace this with your actual deployed contract ID
-export const CONTRACT_ID = "";
+// ⚠️ Ensure the CONTRACT_ID is set in your Vercel/Netlify environment variables
+export const CONTRACT_ID = process.env.REACT_APP_CONTRACT_ID || "";
 
 // ─── Wallet Types ───────────────────────────────────────────────────────────
 

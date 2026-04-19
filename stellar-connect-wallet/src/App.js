@@ -247,15 +247,25 @@ function App() {
         );
         setTxHash(result.hash);
 
-        // Optionally record on contract
+        // Optionally record on contract (non-blocking)
         if (recordOnContract) {
-          await recordPaymentOnContract(
-            publicKey,
-            address,
-            amount,
-            memo || `Payment #${i + 1}`,
-            (s) => { } // silent status for contract recording
-          );
+          try {
+            await recordPaymentOnContract(
+              publicKey,
+              address,
+              amount,
+              memo || `Payment #${i + 1}`,
+              (s) => { } // silent status for contract recording
+            );
+          } catch (contractErr) {
+            // Contract recording failed but the XLM payment succeeded.
+            // Show a non-fatal warning instead of blocking the success.
+            console.warn("Contract recording failed:", contractErr.message);
+            setTxError({
+              type: "CONTRACT_WARNING",
+              message: "Payment sent successfully, but contract recording failed. The contract may not be deployed.",
+            });
+          }
         }
       } catch (error) {
         setTxStatus(TX_STATUS.FAILED);

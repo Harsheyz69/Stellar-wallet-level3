@@ -15,7 +15,7 @@ StellarPay is a decentralized application ecosystem built on the Stellar Testnet
 
 | Multi-Wallet Interface | Smart Contract Test Results |
 | :---: | :---: |
-| ![Multi-Wallet Interface](public/multi%20wallet.png) | ![Test Results](contracts/test%20cases.png) |
+| ![Multi-Wallet Interface](/stellar-connect-wallet/public/multi%20wallet.png) | ![Test Results](/stellar-connect-wallet/contracts/test%20cases.png) |
 
 ---
 

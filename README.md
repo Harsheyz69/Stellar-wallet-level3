@@ -21,11 +21,9 @@ StellarPay is a decentralized application ecosystem built on the Stellar Testnet
 
 ## Demo Video
 
-https://github.com/user-attachments/assets/Stellarpay-demo
-
 > A walkthrough of wallet connection, XLM payment flow, and smart contract recording on the Stellar Testnet.
 
-The full demo video is available at [`stellar-connect-wallet/public/Stellarpay demo.mp4`](/stellar-connect-wallet/public/Stellarpay%20demo.mp4).
+The full demo video is available at [`StellarPay Demo video`](https://youtu.be/q-SaQT9Hu4E).
 
 ---
 

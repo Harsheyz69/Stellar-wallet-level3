@@ -8,7 +8,7 @@ StellarPay is a decentralized application ecosystem built on the Stellar Testnet
 
 - **Network Passphrase**: `Test SDF Network ; September 2015`
 - **RPC URL**: `https://soroban-testnet.stellar.org`
-
+- **Contract ID**: `GCR4ARYESMOZY4EZI5QIV7QLTURPCO7C7XFZIVP774VBU3UIO5HJQ7P6`
 ---
 
 ## Screenshots

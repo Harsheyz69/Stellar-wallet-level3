@@ -1,80 +1,83 @@
-# StellarPay - Payment Tracker Decentralized Application
+# StellarPay -- Payment and Governance dApp Ecosystem
 
 ![Stellar](https://img.shields.io/badge/Network-Stellar%20Testnet-blue)
 ![Soroban](https://img.shields.io/badge/Engine-Soroban-green)
 ![React](https://img.shields.io/badge/Frontend-React%2019-black)
 
-StellarPay is a professional-grade decentralized application (dApp) developed for the Stellar network. It provides a seamless interface for connecting wallets, executing XLM payments, and recording transaction metadata on a Soroban smart contract. This application is designed specifically for the Stellar Testnet.
+StellarPay is a decentralized application ecosystem built on the Stellar Testnet using Soroban smart contracts. It delivers secure payment tracking, administrative governance, and treasury management through a multi-contract architecture with a professional React dashboard.
 
----
-
-## Live Proof (Testnet)
-- **Contract ID**: `[Configure in constants.js]` (uses local memory fallback if not provided)
 - **Network Passphrase**: `Test SDF Network ; September 2015`
 - **RPC URL**: `https://soroban-testnet.stellar.org`
-- **Horizon URL**: `https://horizon-testnet.stellar.org`
 
 ---
 
 ## Screenshots
-| Wallet Options |
-| :---: |
-| ![Wallet Options Screenshot](public/wallet-options.png) |
+
+| Multi-Wallet Interface | Smart Contract Test Results |
+| :---: | :---: |
+| ![Multi-Wallet Interface](public/multi%20wallet.png) | ![Test Results](contracts/test%20cases.png) |
 
 ---
 
 ## Multi-Wallet Support
-Powered by direct integrations and Stellar standards, StellarPay supports:
-- **Freighter** (Recommended)
+
+Powered by the **Stellar Wallets Kit** (`@creit.tech/stellar-wallets-kit`), StellarPay supports multiple browser wallet extensions:
+
+- **Freighter** (Default)
 - **xBull**
+- **Albedo**
+- **LOBSTR**
 
 ---
 
-## Features
+## Smart Contract Architecture
 
-| Feature | Description |
-|---------|-------------|
-| Multi-Wallet Support | Integration with Freighter and xBull browser extensions for secure wallet connection. |
-| XLM Payments | Native XLM transfer capabilities to any valid Stellar Testnet destination. |
-| Smart Contract Logging | On-chain recording of payment details using a custom Soroban smart contract. |
-| Transaction Timeline | Visualized multi-step progress indicator tracking Building, Signing, Submitting, and Confirming stages. |
-| Skeleton Loaders | Shimmer-animated loading states for UI components to enhance user experience during data retrieval. |
-| Caching Layer | Implementation of a Time-To-Live (TTL) based caching system to minimize redundant network requests. |
-| Persistence | Caching of account balances in local storage for immediate display upon session restoration. |
-| Unified Interface | Responsive glassmorphism design optimized for high-end aesthetics and professional usage. |
-| Auto-Synchronization | Automated data polling every 15 seconds to ensure real-time balance and history updates. |
+This project implements a multi-contract architecture following Level 3 professional standards.
+
+### 1. Payment Tracker (`contracts/payment-tracker`)
+
+Records and indexes transaction metadata on-chain using Soroban persistent storage.
+
+- `record_payment` -- Stores sender, recipient, amount, memo, and timestamp. Requires sender authorization via `require_auth`.
+- `get_payment` / `get_payment_count` -- Query individual records or the global counter.
+- `get_payments_by_sender` -- Returns indexed payment IDs per user for efficient lookup.
+- **Validation**: Rejects zero/negative amounts and memos exceeding 100 characters.
+- **Events**: Publishes `pay_rec` events for real-time tracking.
+
+### 2. Voting Contract (`contracts/voting`)
+
+Governs proposal approvals through administrative authorization.
+
+- `init` -- Registers a single admin. Panics on re-initialization.
+- `approve_payment` -- Admin-only function to mark a proposal as approved. Protected by `require_auth` and admin identity verification.
+- `is_approved` -- Public query to check proposal status.
+
+### 3. Treasury Contract (`contracts/treasury`)
+
+Manages assets and executes validated payments through cross-contract calls.
+
+- **Cross-Contract Integration**: Calls the Voting Contract's `is_approved` to verify proposal status before any fund transfer.
+- **SAC Token Integration**: Uses Stellar Asset Contract token transfers (`token::Client`) for secure fund distribution from the treasury balance.
+- `execute_payment` -- Admin-authorized function that validates approval, then transfers tokens to the recipient.
 
 ---
 
-## Architecture
+## Authorization and Security
 
-This application follows a modular architecture to separate concerns and ensure maintainability.
+Every state-mutating function utilizes `require_auth` to ensure only the designated sender or administrator can execute sensitive operations. The Voting Contract enforces admin identity checks, and the Treasury Contract layers cross-contract approval verification on top of authorization.
 
-```text
-+-------------------------------------------------------------+
-|                        User Interface                       |
-|  +------------------+  +------------------+  +-----------+  |
-|  | Landing Section  |  | Dashboard Grid   |  | UI Modal  |  |
-|  +---------+--------+  +---------+--------+  +-----+-----+  |
-|            |                     |                 |        |
-+------------|---------------------|-----------------|--------+
-             |                     |                 |
-+------------v---------------------v-----------------v--------+
-|                      Wallet Kit Layer                       |
-|    Unified Abstraction for Freighter and xBull Wallets      |
-+----------------------------+--------------------------------+
-                             |
-+----------------------------v--------------------------------+
-|                   Contract Client Engine                    |
-|       SDK Integration for Balance, Payments, and History    |
-|       [Integrated Cache Layer: In-memory + LocalStorage]    |
-+----------------------------+--------------------------------+
-                             |
-+----------------------------v--------------------------------+
-|                  External Connectivity                      |
-|       Horizon API | Soroban RPC | Wallet Extensions         |
-+-------------------------------------------------------------+
-```
+---
+
+## Tech Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| Frontend | React 19, Tailwind CSS 3, Lucide Icons |
+| Smart Contracts | Rust (Soroban SDK) |
+| SDKs | `@stellar/stellar-sdk`, `@creit.tech/stellar-wallets-kit` |
+| Wallet Support | Freighter, xBull, Albedo, LOBSTR |
+| Caching | TTL-based in-memory store with LocalStorage persistence |
+| Build Tooling | react-app-rewired, Webpack 5 (with Node.js polyfills) |
 
 ---
 
@@ -82,25 +85,30 @@ This application follows a modular architecture to separate concerns and ensure 
 
 ```text
 stellar-connect-wallet/
-├── public/
-│   └── wallet-options.png      # Screenshot documentation of wallet selection
 ├── contracts/
-│   └── payment-tracker/
-│       └── src/lib.rs           # Soroban smart contract source (Rust)
+│   ├── payment-tracker/      # Payment recording and indexing contract
+│   │   └── src/lib.rs        # Contract logic and 10 unit tests
+│   ├── voting/               # Governance and proposal approval contract
+│   │   └── src/lib.rs        # Admin-protected approval logic and tests
+│   ├── treasury/             # Cross-contract treasury with SAC integration
+│   │   └── src/lib.rs        # Token transfers with voting verification and tests
+│   └── Cargo.toml            # Workspace manifest
 ├── src/
-│   ├── App.js                   # Main application logic and state management
-│   ├── App.css                  # Core styling, animations, and typography
-│   ├── walletKit.js             # Multi-wallet integration logic
-│   ├── contractClient.js        # Stellar SDK interaction layer
-│   ├── cache.js                 # Implementation of the TTL caching utility
-│   ├── constants.js             # Configuration for networks, IDs, and error codes
-│   ├── App.test.js              # Functional tests for UI components
-│   ├── cache.test.js            # Unit tests for the caching mechanism
-│   ├── contractClient.test.js   # Validation tests for client utilities
-│   └── setupTests.js            # Mock configurations for environmental isolation
-├── config-overrides.js          # Webpack polyfills for Node.js module compatibility
-├── package.json                 # Project dependencies and script definitions
-└── README.md                    # Project documentation
+│   ├── App.js                # Main React application component
+│   ├── App.css               # Glassmorphism UI with dark/light theme
+│   ├── walletKit.js          # Multi-wallet abstraction layer
+│   ├── contractClient.js     # Soroban RPC and transaction logic
+│   ├── cache.js              # TTL-based caching with localStorage fallback
+│   ├── constants.js          # Network, wallet, and error constants
+│   ├── App.test.js           # React component tests (3 tests)
+│   ├── contractClient.test.js # Address validation tests (1 test)
+│   └── cache.test.js         # Cache layer tests (4 tests)
+├── public/
+│   ├── multi wallet.png      # Multi-wallet interface screenshot
+│   └── index.html            # Application entry point
+├── config-overrides.js       # Webpack 5 polyfill configuration
+├── package.json              # Dependencies and scripts
+└── README.md                 # Project documentation
 ```
 
 ---
@@ -109,122 +117,82 @@ stellar-connect-wallet/
 
 ### Prerequisites
 
-* Node.js version 18.0.0 or higher
-* A supported browser extension:
-    * [Freighter](https://www.freighter.app/)
-    * [xBull](https://xbull.app/)
+- Node.js 18 or higher
+- Rust toolchain with the `wasm32-unknown-unknown` target
+- [Stellar CLI](https://developers.stellar.org/docs/build/smart-contracts/getting-started/setup) (for contract deployment)
+- A Stellar wallet browser extension (Freighter recommended)
 
 ### Installation
 
-1. Clone the repository:
+1. **Clone the repository**:
    ```bash
    git clone https://github.com/Harsheyz69/Stellar-wallet-level3.git
    cd Stellar-wallet-level3/stellar-connect-wallet
    ```
 
-2. Install the necessary dependencies:
+2. **Install dependencies**:
    ```bash
    npm install
    ```
 
-3. Initialize the development environment:
+3. **Start the development server**:
    ```bash
    npm start
    ```
 
-The application will be accessible at http://localhost:3000.
+### Building Smart Contracts
+
+```bash
+cd contracts
+cargo build --target wasm32-unknown-unknown --release
+```
 
 ---
 
-## Testing Framework & Verified Results
+## Verification
 
-The repository includes a comprehensive test suite consisting of 8 automated tests designed to verify component rendering, state transitions, and utility correctness.
+The repository includes a comprehensive test suite covering both blockchain and frontend layers.
 
-To run the complete React test suite:
-```bash
-npm test -- --watchAll=false
-```
+### Rust Smart Contract Tests (10 Passed)
 
-### Verified Test Results
-
-```text
-PASS  src/cache.test.js
-  Cache Layer
-    ✓ stores and retrieves values within TTL
-    ✓ returns null for expired entries
-    ✓ invalidate removes specific keys
-    ✓ exports cache keys and TTL constants
-
-PASS  src/contractClient.test.js
-  contractClient utilities
-    ✓ isValidStellarAddress correctly validates addresses
-
-PASS  src/App.test.js
-  App
-    ✓ renders welcome screen with hero content when not connected
-    ✓ toggles theme between light and dark mode
-    ✓ opens wallet connection modal on button click
-
-Test Suites: 3 passed, 3 total
-Tests:       8 passed, 8 total
-```
-
-### Running Smart Contract Tests
-
-To verify the Soroban logic, navigate to the contract directory and run Rust unit tests:
+The Payment Tracker includes 10 unit tests covering core logic, validation, indexing, and edge cases. The Voting and Treasury contracts include additional tests for admin authorization, cross-contract calls, and SAC token transfers.
 
 ```bash
 cd contracts/payment-tracker
 cargo test
 ```
 
----
+**Payment Tracker test cases**:
+```
+test test::test_record_payment_success ... ok
+test test::test_invalid_amount_rejection ... ok
+test test::test_memo_length_rejection ... ok
+test test::test_initial_counter_zero ... ok
+test test::test_counter_increment_on_multiple_records ... ok
+test test::test_user_indexing_isolation ... ok
+test test::test_get_payment_full_detail ... ok
+test test::test_get_payment_non_existent ... ok
+test test::test_multiple_payments_single_user ... ok
+test test::test_large_amount_handling ... ok
 
-## Caching Strategy
+test result: ok. 10 passed; 0 failed; 0 ignored
+```
 
-To optimize performance and reduce latency, StellarPay utilizes a custom caching implementation located in `cache.js`.
+### React Frontend Tests (8 Passed)
 
-| Data Category | Retention (TTL) | Persistence Method|
-|---------------|-----------------|-------------------|
-| Account Balance | 10 Seconds | In-memory + LocalStorage |
-| Smart Contract Logs | 15 Seconds | In-memory |
-| Transaction History | 15 Seconds | In-memory |
+Stabilized Jest environment with comprehensive wallet and contract client mocks.
 
-The cache is automatically invalidated upon the successful completion of any transaction to ensure data integrity.
+```bash
+npm test -- --watchAll=false
+```
 
----
-
-## Loading UX
-
-Professional loading states are implemented using three specific strategies:
-1. **Skeleton Components**: Shimmer-animated placeholders that occupy the space of future content during asynchronous loads.
-2. **Indeterminate Progress**: A specialized progress bar that communicates transaction status during signing and submission.
-3. **Spinner Overlays**: Visual feedback provided during wallet connection attempts to signal pending status to the user.
-
----
-
-## Smart Contract Details
-
-The application interacts with a Soroban-based smart contract (`contracts/payment-tracker/src/lib.rs`) that provides the following functionality:
-* `record_payment`: Stores sender, recipient, amount, and memo on-chain.
-* `get_payment_count`: Retrieves the total volume of payments recorded.
-* `get_payments_by_sender`: Indexes all payment IDs associated with a specific address.
-
-If no specific Contract ID is provided in `constants.js`, the application defaults to a localized demonstration mode.
-
----
-
-## Technology Stack
-
-* **React 19**: Core UI library
-* **Stellar SDK**: Blockchain interaction
-* **Soroban SDK**: Smart contract execution
-* **Javascript (ES6+) / Rust**: Programming logic
-* **Vanilla CSS**: Advanced styling and animations
-* **Jest**: Testing framework
+**Frontend test suites**:
+- `App.test.js` -- Renders welcome screen, toggles theme, verifies connect button (3 tests)
+- `contractClient.test.js` -- Stellar address validation with valid/invalid inputs (1 test)
+- `cache.test.js` -- TTL store/retrieve, expiration, invalidation, constants export (4 tests)
 
 ---
 
 ## License
 
-This project is licensed under the MIT License.
+This project is open-source under the MIT License.

@@ -1,11 +1,6 @@
-// jest-dom adds custom jest matchers for asserting on DOM nodes.
-// allows you to do things like:
-// expect(element).toHaveTextContent(/react/i)
-// learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom';
 
 // ─── Mock localStorage ─────────────────────────────────────────────────────
-
 const localStorageMock = (() => {
   let store = {};
   return {
@@ -15,11 +10,9 @@ const localStorageMock = (() => {
     clear: () => { store = {}; },
   };
 })();
-
 Object.defineProperty(window, 'localStorage', { value: localStorageMock });
 
 // ─── Mock @stellar/freighter-api ────────────────────────────────────────────
-
 jest.mock('@stellar/freighter-api', () => ({
   isConnected: jest.fn().mockResolvedValue({ isConnected: false }),
   isAllowed: jest.fn().mockResolvedValue({ isAllowed: false }),
@@ -29,7 +22,6 @@ jest.mock('@stellar/freighter-api', () => ({
 }));
 
 // ─── Mock @creit.tech/stellar-wallets-kit ───────────────────────────────────
-
 jest.mock('@creit.tech/stellar-wallets-kit', () => {
   const kitMock = {
     init: jest.fn(),
@@ -47,28 +39,13 @@ jest.mock('@creit.tech/stellar-wallets-kit', () => {
   };
 }, { virtual: true });
 
-jest.mock('@creit.tech/stellar-wallets-kit/modules/freighter', () => ({
-  FreighterModule: jest.fn(),
-  FREIGHTER_ID: 'FREIGHTER'
-}), { virtual: true });
+// Modules
+jest.mock('@creit.tech/stellar-wallets-kit/modules/freighter', () => ({ FreighterModule: jest.fn(), FREIGHTER_ID: 'FREIGHTER' }), { virtual: true });
+jest.mock('@creit.tech/stellar-wallets-kit/modules/xbull', () => ({ xBullModule: jest.fn(), XBULL_ID: 'XBULL' }), { virtual: true });
+jest.mock('@creit.tech/stellar-wallets-kit/modules/albedo', () => ({ AlbedoModule: jest.fn(), ALBEDO_ID: 'ALBEDO' }), { virtual: true });
+jest.mock('@creit.tech/stellar-wallets-kit/modules/lobstr', () => ({ LobstrModule: jest.fn(), LOBSTR_ID: 'LOBSTR' }), { virtual: true });
 
-jest.mock('@creit.tech/stellar-wallets-kit/modules/xbull', () => ({
-  xBullModule: jest.fn(),
-  XBULL_ID: 'XBULL'
-}), { virtual: true });
-
-jest.mock('@creit.tech/stellar-wallets-kit/modules/albedo', () => ({
-  AlbedoModule: jest.fn(),
-  ALBEDO_ID: 'ALBEDO'
-}), { virtual: true });
-
-jest.mock('@creit.tech/stellar-wallets-kit/modules/lobstr', () => ({
-  LobstrModule: jest.fn(),
-  LOBSTR_ID: 'LOBSTR'
-}), { virtual: true });
-
-// ─── Mock lucide-react (return simple span elements) ────────────────────────
-
+// ─── Mock lucide-react ──────────────────────────────────────────────────────
 jest.mock('lucide-react', () => {
   const React = require('react');
   const icons = [
@@ -78,16 +55,12 @@ jest.mock('lucide-react', () => {
   ];
   const mocked = {};
   icons.forEach((name) => {
-    mocked[name] = React.forwardRef((props, ref) =>
-      React.createElement('span', { ref, 'data-testid': `icon-${name}`, ...props })
-    );
-    mocked[name].displayName = name;
+    mocked[name] = (props) => React.createElement('span', { 'data-testid': `icon-${name}`, ...props });
   });
   return mocked;
 });
 
-// ─── Mock @stellar/stellar-sdk (minimal) ────────────────────────────────────
-
+// ─── Mock @stellar/stellar-sdk ──────────────────────────────────────────────
 jest.mock('@stellar/stellar-sdk', () => ({
   TransactionBuilder: { fromXDR: jest.fn() },
   Networks: { TESTNET: 'Test SDF Network ; September 2015' },

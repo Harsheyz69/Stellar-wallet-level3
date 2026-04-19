@@ -1,37 +1,30 @@
 #![no_std]
-use soroban_sdk::{
-    contract, contractimpl, contracttype, symbol_short, Address, Env, String, Symbol, Vec,
-};
-
-// ── Data types ──────────────────────────────────────────────────────────────
+use soroban_sdk::{contract, contractimpl, contracttype, symbol_short, Address, Env, String, Vec};
 
 #[contracttype]
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct PaymentRecord {
     pub id: u64,
     pub sender: Address,
     pub recipient: Address,
-    pub amount: i128,
+    pub amount: i128, // Amount in stroops
     pub memo: String,
     pub timestamp: u64,
-    pub status: u32, // 1 = completed
 }
 
 #[contracttype]
 pub enum DataKey {
-    PaymentCount,
-    Payment(u64),
-    SenderPayments(Address),
+    Counter,            // u64
+    Payment(u64),       // PaymentRecord
+    UserPayments(Address), // Vec<u64>
 }
-
-// ── Contract ────────────────────────────────────────────────────────────────
 
 #[contract]
 pub struct PaymentTracker;
 
 #[contractimpl]
 impl PaymentTracker {
-    /// Record a new payment on-chain. Caller must authorize as `sender`.
+    /// Records a payment on-chain. Sender must authorize the transaction.
     pub fn record_payment(
         env: Env,
         sender: Address,
@@ -39,82 +32,71 @@ impl PaymentTracker {
         amount: i128,
         memo: String,
     ) -> u64 {
-        // Require the sender to have signed / authorized this call
+        // Advanced Authorization: Ensure the sender signed the call
         sender.require_auth();
 
-        // Auto-increment payment ID
-        let mut count: u64 = env
-            .storage()
-            .instance()
-            .get(&DataKey::PaymentCount)
-            .unwrap_or(0);
-        count += 1;
+        // Business Logic Validation
+        if amount <= 0 {
+            panic!("Amount must be positive");
+        }
+        if memo.len() > 100 {
+            panic!("Memo too long");
+        }
 
-        // Build the record
+        let storage = env.storage().persistent();
+
+        // Increment ID counter
+        let mut id: u64 = storage.get(&DataKey::Counter).unwrap_or(0);
+        id += 1;
+        storage.set(&DataKey::Counter, &id);
+
+        let timestamp = env.ledger().timestamp();
+
+        // Create and store the record
         let record = PaymentRecord {
-            id: count,
+            id,
             sender: sender.clone(),
-            recipient: recipient.clone(),
+            recipient,
             amount,
             memo,
-            timestamp: env.ledger().timestamp(),
-            status: 1,
+            timestamp,
         };
+        storage.set(&DataKey::Payment(id), &record);
 
-        // Persist
-        env.storage()
-            .persistent()
-            .set(&DataKey::Payment(count), &record);
-        env.storage()
-            .instance()
-            .set(&DataKey::PaymentCount, &count);
-
-        // Maintain sender → [payment_ids] index
-        let mut sender_payments: Vec<u64> = env
-            .storage()
-            .persistent()
-            .get(&DataKey::SenderPayments(sender.clone()))
+        // Update sender's index
+        let mut user_payments: Vec<u64> = storage
+            .get(&DataKey::UserPayments(sender.clone()))
             .unwrap_or(Vec::new(&env));
-        sender_payments.push_back(count);
-        env.storage()
-            .persistent()
-            .set(&DataKey::SenderPayments(sender.clone()), &sender_payments);
+        user_payments.push_back(id);
+        storage.set(&DataKey::UserPayments(sender.clone()), &user_payments);
 
-        // Emit event for real-time listeners
-        env.events().publish(
-            (symbol_short!("pay_rec"), sender),
-            (count, recipient, amount),
-        );
+        // Publish event for real-time tracking (Soroban standard)
+        env.events().publish((symbol_short!("pay_rec"), id), sender);
 
-        count
+        id
     }
 
-    /// Read a single payment by ID.
-    pub fn get_payment(env: Env, payment_id: u64) -> PaymentRecord {
-        env.storage()
-            .persistent()
-            .get(&DataKey::Payment(payment_id))
-            .expect("Payment not found")
-    }
-
-    /// Return the total number of payments recorded.
+    /// Returns the total number of payments recorded.
     pub fn get_payment_count(env: Env) -> u64 {
-        env.storage()
-            .instance()
-            .get(&DataKey::PaymentCount)
-            .unwrap_or(0)
+        env.storage().persistent().get(&DataKey::Counter).unwrap_or(0)
     }
 
-    /// Return all payment IDs for a given sender.
+    /// Fetches a specific payment record by its ID.
+    pub fn get_payment(env: Env, id: u64) -> PaymentRecord {
+        env.storage()
+            .persistent()
+            .get(&DataKey::Payment(id))
+            .unwrap_or_else(|| panic!("Payment record not found"))
+    }
+
+    /// Returns all payment IDs associated with a specific address.
     pub fn get_payments_by_sender(env: Env, sender: Address) -> Vec<u64> {
         env.storage()
             .persistent()
-            .get(&DataKey::SenderPayments(sender))
+            .get(&DataKey::UserPayments(sender))
             .unwrap_or(Vec::new(&env))
     }
 }
-
-// ── Tests ───────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
 mod test {
@@ -122,53 +104,136 @@ mod test {
     use soroban_sdk::{testutils::Address as _, Env, String};
 
     #[test]
-    fn test_record_and_get_payment() {
+    fn test_record_payment_success() {
         let env = Env::default();
         env.mock_all_auths();
-
         let contract_id = env.register(PaymentTracker, ());
         let client = PaymentTrackerClient::new(&env, &contract_id);
 
         let sender = Address::generate(&env);
         let recipient = Address::generate(&env);
-        let memo = String::from_str(&env, "Test payment");
-
-        // Record a payment
-        let id = client.record_payment(&sender, &recipient, &1_000_000_i128, &memo);
+        let id = client.record_payment(&sender, &recipient, &1000, &String::from_str(&env, "Test"));
         assert_eq!(id, 1);
-
-        // Verify count
-        assert_eq!(client.get_payment_count(), 1);
-
-        // Read it back
-        let record = client.get_payment(&1u64);
-        assert_eq!(record.sender, sender);
-        assert_eq!(record.recipient, recipient);
-        assert_eq!(record.amount, 1_000_000);
-        assert_eq!(record.status, 1);
-
-        // Verify sender index
-        let sender_payments = client.get_payments_by_sender(&sender);
-        assert_eq!(sender_payments.len(), 1);
-        assert_eq!(sender_payments.get(0).unwrap(), 1);
     }
 
     #[test]
-    fn test_multiple_payments() {
+    #[should_panic(expected = "Amount must be positive")]
+    fn test_invalid_amount_rejection() {
         let env = Env::default();
         env.mock_all_auths();
-
         let contract_id = env.register(PaymentTracker, ());
         let client = PaymentTrackerClient::new(&env, &contract_id);
 
         let sender = Address::generate(&env);
-        let r1 = Address::generate(&env);
-        let r2 = Address::generate(&env);
+        client.record_payment(&sender, &Address::generate(&env), &0, &String::from_str(&env, "Zero"));
+    }
 
-        client.record_payment(&sender, &r1, &500_i128, &String::from_str(&env, "First"));
-        client.record_payment(&sender, &r2, &750_i128, &String::from_str(&env, "Second"));
+    #[test]
+    #[should_panic(expected = "Memo too long")]
+    fn test_memo_length_rejection() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let contract_id = env.register(PaymentTracker, ());
+        let client = PaymentTrackerClient::new(&env, &contract_id);
 
+        let long_memo = "This memo is definitely going to be way longer than the one hundred character limit we just imposed in the contract code to demonstrate validation functionality.";
+        client.record_payment(&Address::generate(&env), &Address::generate(&env), &10, &String::from_str(&env, long_memo));
+    }
+
+    #[test]
+    fn test_initial_counter_zero() {
+        let env = Env::default();
+        let contract_id = env.register(PaymentTracker, ());
+        let client = PaymentTrackerClient::new(&env, &contract_id);
+        assert_eq!(client.get_payment_count(), 0);
+    }
+
+    #[test]
+    fn test_counter_increment_on_multiple_records() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let contract_id = env.register(PaymentTracker, ());
+        let client = PaymentTrackerClient::new(&env, &contract_id);
+
+        client.record_payment(&Address::generate(&env), &Address::generate(&env), &10, &String::from_str(&env, "a"));
+        client.record_payment(&Address::generate(&env), &Address::generate(&env), &20, &String::from_str(&env, "b"));
         assert_eq!(client.get_payment_count(), 2);
-        assert_eq!(client.get_payments_by_sender(&sender).len(), 2);
+    }
+
+    #[test]
+    fn test_user_indexing_isolation() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let contract_id = env.register(PaymentTracker, ());
+        let client = PaymentTrackerClient::new(&env, &contract_id);
+
+        let u1 = Address::generate(&env);
+        let u2 = Address::generate(&env);
+
+        client.record_payment(&u1, &Address::generate(&env), &10, &String::from_str(&env, "u1-p1"));
+        client.record_payment(&u2, &Address::generate(&env), &10, &String::from_str(&env, "u2-p1"));
+
+        assert_eq!(client.get_payments_by_sender(&u1).len(), 1);
+        assert_eq!(client.get_payments_by_sender(&u2).len(), 1);
+    }
+
+    #[test]
+    fn test_get_payment_full_detail() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let contract_id = env.register(PaymentTracker, ());
+        let client = PaymentTrackerClient::new(&env, &contract_id);
+
+        let sender = Address::generate(&env);
+        let recipient = Address::generate(&env);
+        let amount = 500i128;
+        let memo = String::from_str(&env, "FullDetail");
+
+        let id = client.record_payment(&sender, &recipient, &amount, &memo);
+        let record = client.get_payment(&id);
+
+        assert_eq!(record.sender, sender);
+        assert_eq!(record.recipient, recipient);
+        assert_eq!(record.amount, amount);
+        assert_eq!(record.memo, memo);
+    }
+
+    #[test]
+    #[should_panic(expected = "Payment record not found")]
+    fn test_get_payment_non_existent() {
+        let env = Env::default();
+        let contract_id = env.register(PaymentTracker, ());
+        let client = PaymentTrackerClient::new(&env, &contract_id);
+        client.get_payment(&404);
+    }
+
+    #[test]
+    fn test_multiple_payments_single_user() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let contract_id = env.register(PaymentTracker, ());
+        let client = PaymentTrackerClient::new(&env, &contract_id);
+
+        let sender = Address::generate(&env);
+        client.record_payment(&sender, &Address::generate(&env), &10, &String::from_str(&env, "p1"));
+        client.record_payment(&sender, &Address::generate(&env), &20, &String::from_str(&env, "p2"));
+        client.record_payment(&sender, &Address::generate(&env), &30, &String::from_str(&env, "p3"));
+
+        let ids = client.get_payments_by_sender(&sender);
+        assert_eq!(ids.len(), 3);
+        assert_eq!(ids.get(0).unwrap(), 1);
+        assert_eq!(ids.get(2).unwrap(), 3);
+    }
+
+    #[test]
+    fn test_large_amount_handling() {
+        let env = Env::default();
+        env.mock_all_auths();
+        let contract_id = env.register(PaymentTracker, ());
+        let client = PaymentTrackerClient::new(&env, &contract_id);
+
+        let max_val = 1_000_000_000_000_000_000i128; // Large Stroops
+        let id = client.record_payment(&Address::generate(&env), &Address::generate(&env), &max_val, &String::from_str(&env, "whale"));
+        assert_eq!(client.get_payment(&id).amount, max_val);
     }
 }

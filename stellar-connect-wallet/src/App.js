@@ -853,7 +853,7 @@ function App() {
             <div className="contract-info glass-card">
               <FileText size={14} />
               <span>Contract ID: </span>
-              <code>{CONTRACT_ID.slice(0, 12)}...{CONTRACT_ID.slice(-6)}</code>
+              <code>{typeof CONTRACT_ID === 'string' && CONTRACT_ID.length > 18 ? `${CONTRACT_ID.slice(0, 12)}...${CONTRACT_ID.slice(-6)}` : CONTRACT_ID || "Not Deployed"}</code>
               <span className="contract-network">
                 <div className="status-dot pulse-purple" />
                 Testnet
